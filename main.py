@@ -13,12 +13,16 @@ RED = (255, 0, 0)
 BLUE = (0, 0, 255)
 GREEN = (0, 255, 0)
 WHITE = (255, 255, 255)
-G = 1000
-K = 100
+G = 1
+K = 5
 FPS = 60
 dt = 1 / FPS
 
-
+def collect_garbage():
+    global Objects
+    for object in Objects:
+        if object.position.magnitude() > 1000:
+            Objects.remove(object)
 
 class Vector:
     def __init__(self, *components):
@@ -62,7 +66,7 @@ class Vector:
     def magnitude(self):
         return math.sqrt(sum(a**2 for a in self.components))
 
-    def normalize(self):
+    def normalized(self):
         mag = self.magnitude()
         if mag == 0:
             raise ValueError("Cannot normalize a zero vector.")
@@ -79,6 +83,10 @@ class Vector:
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def cut(self, limit):
+        self.normalized()
+        self *= limit
+
 
 class Particle:
     def __init__(self, x, y, charge, mass, radius):
@@ -89,26 +97,29 @@ class Particle:
         self.velocity = Vector(0, 0)
         self.acceleration = Vector(0, 0)
 
-
     def interact_with(self, other):
         if other.position == self.position:
             return
-        gravity_force = (other.position - self.position).normalize() * (G * self.mass * other.mass / ((other.position - self.position).magnitude() - self.radius)**2)
-        electro_weak_force = (other.position - self.position).normalize() * (K * self.charge * other.charge / ((other.position - self.position).magnitude() - self.radius)**2)
-        electro_weak_force = -1 * (other.position - self.position).normalize() * (
-                    K * self.mass * other.mass / ((other.position - self.position).magnitude() + self.radius) ** 8)
+        gravity_force = (other.position - self.position).normalized() * (G * self.mass * other.mass / ((other.position - self.position).magnitude() / (self.radius + other.radius)) ** 2)
+        electro_weak_force = (other.position - self.position).normalized() * (K * self.charge * other.charge / ((other.position - self.position).magnitude() / (self.radius + other.radius)) ** 2)
+        electro_strong_force = (other.position - self.position).normalized() * -1 * (
+                    K * self.mass * other.mass / ((other.position - self.position).magnitude() / (self.radius + other.radius)) ** 3)
 
-        a = gravity_force + electro_weak_force
+        a = electro_strong_force + gravity_force + electro_weak_force
 
         a *= 1 / self.mass
+
         self.acceleration = a
         self.velocity += a * dt
+        if self.velocity.magnitude() > 10:
+            self.velocity = self.velocity.normalized() * 50
         self.position += self.velocity * dt
 
     def draw(self):
         pygame.draw.circle(screen, BLUE, self.position.to_tuple(), self.radius)
 
-Objects = [Particle(100, 100, 1, 1000, 25)]
+Objects = []
+
 
 running = True
 while running:
@@ -130,6 +141,7 @@ while running:
         pass
 
     screen.fill(BLACK)
+    collect_garbage()
     for obj in Objects:
         for other in Objects:
             if obj.position.to_tuple() != other.position.to_tuple():
