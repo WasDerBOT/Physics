@@ -100,12 +100,11 @@ class Particle:
     def interact_with(self, other):
         if other.position == self.position:
             return
-        gravity_force = (other.position - self.position).normalized() * (G * self.mass * other.mass / ((other.position - self.position).magnitude() / (self.radius + other.radius)) ** 2)
-        electro_weak_force = (other.position - self.position).normalized() * (K * self.charge * other.charge / ((other.position - self.position).magnitude() / (self.radius + other.radius)) ** 2)
-        electro_strong_force = (other.position - self.position).normalized() * -1 * (
-                    K * self.mass * other.mass / ((other.position - self.position).magnitude() / (self.radius + other.radius)) ** 3)
+        dist = (other.position - self.position).magnitude() / 10
+        coulomb_force = -K * (other.position - self.position) * (self.charge * other.charge / dist**2)
+        strong_force = K * (other.position - self.position) * (self.charge * other.charge / dist**5)
 
-        a = electro_strong_force + gravity_force + electro_weak_force
+        a = coulomb_force + strong_force
 
         a *= 1 / self.mass
 
@@ -116,7 +115,10 @@ class Particle:
         self.position += self.velocity * dt
 
     def draw(self):
-        pygame.draw.circle(screen, BLUE, self.position.to_tuple(), self.radius)
+        if self.charge > 0:
+            pygame.draw.circle(screen, RED, self.position.to_tuple(), self.radius)
+        else:
+            pygame.draw.circle(screen, BLUE, self.position.to_tuple(), self.radius)
 
 Objects = []
 
@@ -128,11 +130,15 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         if event.type == pygame.MOUSEBUTTONDOWN:
-            click_position = pygame.mouse.get_pos()
-            Objects.append(Particle(click_position[0], click_position[1], 0, 100, 30))
+            if event.button == 4:
+                click_position = pygame.mouse.get_pos()
+                Objects.append(Particle(click_position[0], click_position[1], 100, 100, 30))
+            if event.button == 5:
+                click_position = pygame.mouse.get_pos()
+                Objects.append(Particle(click_position[0], click_position[1], -100, 100, 30))
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_LEFT]:
-        pass
+    if keys[pygame.K_c]:
+        Objects.clear()
     if keys[pygame.K_RIGHT]:
         pass
     if keys[pygame.K_UP]:
